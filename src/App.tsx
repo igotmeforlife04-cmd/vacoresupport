@@ -82,6 +82,9 @@ import {
   Permission
 } from './types';
 
+import { WorkerOnboarding } from './components/onboarding/WorkerOnboarding';
+import { EmployerOnboarding } from './components/onboarding/EmployerOnboarding';
+
 // RBAC Helper
 export const hasPermission = (user: UserData | null, permission: Permission): boolean => {
   if (!user) return false;
@@ -2412,6 +2415,26 @@ const JobsPage = ({ user }: { user: UserData | null }) => {
   );
 };
 
+const AuthRedirect = ({ user }: { user: UserData | null }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!user) return;
+
+    // Skip redirection if logging out
+    if (location.pathname === '/login' || location.pathname === '/register') return;
+
+    if (user.role === 'JOB_SEEKER' && !user.first_name && location.pathname !== '/onboarding/worker') {
+      navigate('/onboarding/worker');
+    } else if (user.role === 'EMPLOYER' && !user.company_name && location.pathname !== '/onboarding/employer') {
+      navigate('/onboarding/employer');
+    }
+  }, [user, location.pathname, navigate]);
+
+  return null;
+};
+
 // --- Main App ---
 
 export default function App() {
@@ -2420,8 +2443,15 @@ export default function App() {
 
   useEffect(() => {
     // Check active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
+        // Fetch profile
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
         const userData: UserData = {
           id: session.user.id,
           name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
@@ -2430,7 +2460,13 @@ export default function App() {
           status: 'ACTIVE',
           subscription_status: 'none',
           email_verified: !!session.user.email_confirmed_at,
-          created_at: session.user.created_at
+          created_at: session.user.created_at,
+          first_name: profile?.first_name,
+          last_name: profile?.last_name,
+          company_name: profile?.company_name,
+          company_website: profile?.company_website,
+          bio: profile?.bio,
+          detailed_skills: profile?.detailed_skills,
         };
         setUser(userData);
       }
@@ -2438,8 +2474,15 @@ export default function App() {
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
+        // Fetch profile
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+
         const userData: UserData = {
           id: session.user.id,
           name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0] || 'User',
@@ -2448,7 +2491,13 @@ export default function App() {
           status: 'ACTIVE',
           subscription_status: 'none',
           email_verified: !!session.user.email_confirmed_at,
-          created_at: session.user.created_at
+          created_at: session.user.created_at,
+          first_name: profile?.first_name,
+          last_name: profile?.last_name,
+          company_name: profile?.company_name,
+          company_website: profile?.company_website,
+          bio: profile?.bio,
+          detailed_skills: profile?.detailed_skills,
         };
         setUser(userData);
       } else {
@@ -2491,6 +2540,7 @@ export default function App() {
 
   return (
     <Router>
+      <AuthRedirect user={user} />
       <div className="min-h-screen bg-zinc-50 font-sans selection:bg-indigo-100 selection:text-indigo-900">
         <Navbar user={user} onLogout={handleLogout} />
         
@@ -2505,6 +2555,10 @@ export default function App() {
             <Route path="/subscription" element={<SubscriptionPage user={user} />} />
             <Route path="/assessments" element={<SkillAssessmentPage user={user} />} />
             
+            {/* Onboarding Routes */}
+            <Route path="/onboarding/worker" element={user && user.role === 'JOB_SEEKER' ? <WorkerOnboarding user={user} onComplete={() => window.location.reload()} /> : <Navigate to="/" />} />
+            <Route path="/onboarding/employer" element={user && user.role === 'EMPLOYER' ? <EmployerOnboarding user={user} onComplete={() => window.location.reload()} /> : <Navigate to="/" />} />
+
             {/* Admin Routes */}
             <Route path="/admin" element={<AdminGuard user={user}><AdminLayout user={user!} /></AdminGuard>}>
               <Route index element={<Navigate to="/admin/dashboard" replace />} />

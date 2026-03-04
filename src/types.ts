@@ -33,6 +33,16 @@ export interface UserData {
     status: string;
     periodEnd?: string;
   };
+  // Profile fields
+  first_name?: string;
+  last_name?: string;
+  company_name?: string;
+  company_website?: string;
+  bio?: string;
+  detailed_skills?: {
+    category: string;
+    roles: string[];
+  };
 }
 
 export interface Job {

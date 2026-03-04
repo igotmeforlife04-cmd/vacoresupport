@@ -340,7 +340,7 @@ export const AdminUsers = ({ admin, filterRole }: { admin: UserData, filterRole?
                               </button>
                             ) : (
                               <button 
-                                onClick={() => handleStatusChange(user.id, 'APPROVED')}
+                                onClick={() => handleStatusChange(user.id, 'ACTIVE')}
                                 className="w-full px-4 py-2 text-left text-sm font-bold text-emerald-600 hover:bg-emerald-50 flex items-center gap-2"
                               >
                                 <Unlock className="w-4 h-4" /> Activate Account
