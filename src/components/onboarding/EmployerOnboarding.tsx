@@ -32,6 +32,13 @@ export const EmployerOnboarding: React.FC<EmployerOnboardingProps> = ({ user, on
     setError(null);
 
     try {
+      // Get the real user ID from the session
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !authUser) {
+        throw new Error('Authentication error. Please try logging in again.');
+      }
+
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
@@ -40,12 +47,12 @@ export const EmployerOnboarding: React.FC<EmployerOnboardingProps> = ({ user, on
           company_name: formData.companyName,
           company_website: formData.companyWebsite,
         })
-        .eq('id', user.id);
+        .eq('id', authUser.id);
 
       if (updateError) throw updateError;
 
       onComplete();
-      navigate('/employer'); // Redirect to Employer dashboard
+      navigate('/dashboard'); // Redirect to Dashboard
     } catch (err: any) {
       console.error('Error updating profile:', err);
       setError(err.message || 'Failed to update profile. Please try again.');

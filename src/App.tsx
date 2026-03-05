@@ -84,6 +84,7 @@ import {
 
 import { WorkerOnboarding } from './components/onboarding/WorkerOnboarding';
 import { EmployerOnboarding } from './components/onboarding/EmployerOnboarding';
+import { Dashboard } from './components/Dashboard';
 
 // RBAC Helper
 export const hasPermission = (user: UserData | null, permission: Permission): boolean => {
@@ -2578,6 +2579,7 @@ export default function App() {
             <Route path="/register" element={user ? <Navigate to="/" /> : <RegisterPage onLogin={handleLogin} />} />
             
             {/* Protected Routes */}
+            <Route path="/dashboard" element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} />
             <Route path="/employer" element={user?.role === 'EMPLOYER' ? <EmployerDashboard user={user} /> : <Navigate to="/login" />} />
             <Route path="/va" element={user?.role === 'JOB_SEEKER' ? <VADashboard user={user} /> : <Navigate to="/login" />} />
             

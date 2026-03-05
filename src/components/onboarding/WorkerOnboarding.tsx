@@ -52,6 +52,13 @@ export const WorkerOnboarding: React.FC<WorkerOnboardingProps> = ({ user, onComp
     setError(null);
 
     try {
+      // Get the real user ID from the session to ensure we're not using a demo ID
+      const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !authUser) {
+        throw new Error('Authentication error. Please try logging in again.');
+      }
+
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
@@ -62,15 +69,13 @@ export const WorkerOnboarding: React.FC<WorkerOnboardingProps> = ({ user, onComp
             category: formData.selectedCategory,
             roles: formData.selectedRoles,
           },
-          // Ensure the profile is marked as complete if you have a flag, 
-          // or just rely on the presence of these fields.
         })
-        .eq('id', user.id);
+        .eq('id', authUser.id);
 
       if (updateError) throw updateError;
 
       onComplete();
-      navigate('/va'); // Redirect to VA dashboard
+      navigate('/dashboard'); // Redirect to Dashboard
     } catch (err: any) {
       console.error('Error updating profile:', err);
       setError(err.message || 'Failed to update profile. Please try again.');
