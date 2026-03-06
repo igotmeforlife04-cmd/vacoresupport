@@ -85,6 +85,11 @@ import {
 import { WorkerOnboarding } from './components/onboarding/WorkerOnboarding';
 import { EmployerOnboarding } from './components/onboarding/EmployerOnboarding';
 import { Dashboard } from './components/Dashboard';
+import { WorkerDashboard } from './components/dashboard/WorkerDashboard';
+import { EmployerDashboard } from './components/dashboard/EmployerDashboard';
+import { AdminDashboard } from './components/dashboard/AdminDashboard';
+import { WorkerProfile } from './components/profile/WorkerProfile';
+import { EmployerProfile } from './components/profile/EmployerProfile';
 
 // RBAC Helper
 export const hasPermission = (user: UserData | null, permission: Permission): boolean => {
@@ -102,6 +107,15 @@ export const hasPermission = (user: UserData | null, permission: Permission): bo
 
   const userPermissions = user.permissions || rolePermissions[user.role] || [];
   return userPermissions.includes(permission);
+};
+
+export const getDashboardRoute = (role?: UserRole): string => {
+  switch (role) {
+    case 'JOB_SEEKER': return '/dashboard/worker';
+    case 'EMPLOYER': return '/dashboard/employer';
+    case 'ADMIN': return '/dashboard/admin';
+    default: return '/';
+  }
 };
 
 // Audit Log Helper
@@ -1009,7 +1023,7 @@ const LoginPage = ({ onLogin }: { onLogin: (user: UserData) => void }) => {
         created_at: new Date().toISOString()
       };
       onLogin(demoUser);
-      navigate('/');
+      navigate(getDashboardRoute(demoUser.role));
       setLoading(false);
       return;
     }
@@ -1036,7 +1050,7 @@ const LoginPage = ({ onLogin }: { onLogin: (user: UserData) => void }) => {
           created_at: data.user.created_at
         };
         onLogin(userData);
-        navigate('/');
+        navigate(getDashboardRoute(userData.role));
       }
     } catch (err: any) {
       console.error('Login error:', err);
@@ -1161,7 +1175,7 @@ const RegisterPage = ({ onLogin }: { onLogin: (user: UserData) => void }) => {
             created_at: data.user.created_at
           };
           onLogin(userData);
-          navigate('/');
+          navigate(getDashboardRoute(userData.role));
         } else {
           setMessage('Registration successful! Please check your email to confirm your account before logging in.');
         }
@@ -1397,273 +1411,7 @@ const AdminLayout = ({ user }: { user: UserData }) => {
   );
 };
 
-const EmployerDashboard = ({ user }: { user: UserData }) => {
-  const [showPostModal, setShowPostModal] = useState(false);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [salaryMin, setSalaryMin] = useState('');
-  const [salaryMax, setSalaryMax] = useState('');
-  const [skills, setSkills] = useState('');
-  const navigate = useNavigate();
 
-  const handlePostJob = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const res = await fetch('/api/jobs', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        employer_id: user.id,
-        title,
-        description,
-        salary_min: Number(salaryMin),
-        salary_max: Number(salaryMax),
-        job_type: 'Full-time',
-        experience_level: 'Intermediate',
-        skills: skills.split(',').map(s => s.trim()).filter(s => s !== '')
-      })
-    });
-    if (res.ok) {
-      setShowPostModal(false);
-      setTitle('');
-      setDescription('');
-      setSalaryMin('');
-      setSalaryMax('');
-      setSkills('');
-      alert('Job posted! Awaiting admin approval.');
-    }
-  };
-
-  return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold text-zinc-900">Employer Dashboard</h1>
-        <button 
-          onClick={() => setShowPostModal(true)}
-          className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 shadow-lg shadow-indigo-100"
-        >
-          <Plus className="w-5 h-5" />
-          Post New Job
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="md:col-span-2 space-y-6">
-          <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
-            <h2 className="text-xl font-bold text-zinc-900 mb-6">Recent Applicants</h2>
-            <div className="text-center py-12 text-zinc-500">
-              No applicants yet. Post a job to start receiving applications.
-            </div>
-          </div>
-        </div>
-        
-        <div className="space-y-6">
-          <div className="bg-indigo-600 p-6 rounded-2xl text-white shadow-xl shadow-indigo-100">
-            <h3 className="text-lg font-bold mb-2">Current Plan: {user.subscription?.plan || 'Free'}</h3>
-            <p className="text-indigo-100 text-sm mb-6">
-              {user.subscription?.plan === 'Enterprise' 
-                ? 'Unlimited job posts and candidate searches.' 
-                : 'Upgrade for more job posts and premium features.'}
-            </p>
-            <button 
-              onClick={() => navigate('/pricing')}
-              className="w-full bg-white text-indigo-600 py-2 rounded-lg font-bold hover:bg-indigo-50 transition-all"
-            >
-              {user.subscription?.plan ? 'Manage Subscription' : 'Upgrade Plan'}
-            </button>
-          </div>
-          
-          <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
-            <h3 className="font-bold text-zinc-900 mb-4">Quick Links</h3>
-            <div className="space-y-3">
-              <button className="w-full text-left text-sm text-zinc-600 hover:text-indigo-600 flex items-center gap-2">
-                <User className="w-4 h-4" /> Company Profile
-              </button>
-              <button className="w-full text-left text-sm text-zinc-600 hover:text-indigo-600 flex items-center gap-2">
-                <Settings className="w-4 h-4" /> Billing Settings
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Post Job Modal */}
-      <AnimatePresence>
-        {showPostModal && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowPostModal(false)}
-              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl relative z-10 overflow-hidden"
-            >
-              <div className="p-6 border-b border-zinc-100 flex items-center justify-between">
-                <h2 className="text-xl font-bold text-zinc-900">Post a New Job</h2>
-                <button onClick={() => setShowPostModal(false)} className="text-zinc-400 hover:text-zinc-600"><X /></button>
-              </div>
-              <form onSubmit={handlePostJob} className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 mb-1">Job Title</label>
-                  <input 
-                    type="text" 
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className="w-full px-4 py-2 border border-zinc-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="e.g. Executive Virtual Assistant"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 mb-1">Description</label>
-                  <textarea 
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="w-full px-4 py-2 border border-zinc-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 h-32"
-                    placeholder="Describe the role and responsibilities..."
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 mb-1">Min Salary ($/mo)</label>
-                    <input 
-                      type="number" 
-                      value={salaryMin}
-                      onChange={(e) => setSalaryMin(e.target.value)}
-                      className="w-full px-4 py-2 border border-zinc-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
-                      placeholder="500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 mb-1">Max Salary ($/mo)</label>
-                    <input 
-                      type="number" 
-                      value={salaryMax}
-                      onChange={(e) => setSalaryMax(e.target.value)}
-                      className="w-full px-4 py-2 border border-zinc-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
-                      placeholder="1500"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 mb-1">Required Skills (comma separated)</label>
-                  <input 
-                    type="text" 
-                    value={skills}
-                    onChange={(e) => setSkills(e.target.value)}
-                    className="w-full px-4 py-2 border border-zinc-200 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="e.g. React, Node.js, Design"
-                  />
-                </div>
-                <button className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100">
-                  Publish Job Listing
-                </button>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
-
-const VADashboard = ({ user }: { user: UserData }) => {
-  const [jobs, setJobs] = useState<any[]>([]);
-
-  useEffect(() => {
-    fetch('/api/jobs').then(res => res.json()).then(setJobs);
-  }, []);
-
-  return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-zinc-900 mb-8">Welcome, {user.name}</h1>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="md:col-span-2 space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-zinc-900">Recommended Jobs</h2>
-            <Link to="/jobs" className="text-sm font-bold text-indigo-600 hover:underline">View all</Link>
-          </div>
-          
-          <div className="space-y-4">
-            {jobs.length === 0 ? (
-              <div className="bg-white p-12 text-center rounded-2xl border border-zinc-200 text-zinc-500">
-                No jobs available right now. Check back later!
-              </div>
-            ) : (
-              jobs.slice(0, 5).map((job) => (
-                <div key={job.id} className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm hover:shadow-md transition-all group">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h3 className="text-lg font-bold text-zinc-900 group-hover:text-indigo-600 transition-colors">{job.title}</h3>
-                      <p className="text-sm text-zinc-500 font-medium">{job.company_name}</p>
-                    </div>
-                    {job.is_featured ? (
-                      <span className="bg-amber-100 text-amber-700 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded">Featured</span>
-                    ) : null}
-                  </div>
-                  <p className="text-zinc-600 text-sm line-clamp-2 mb-4">{job.description}</p>
-                  <div className="flex items-center gap-4 text-sm text-zinc-500">
-                    <div className="flex items-center gap-1"><DollarSign className="w-4 h-4" /> ${job.salary_min} - ${job.salary_max}/mo</div>
-                    <div className="flex items-center gap-1"><Clock className="w-4 h-4" /> {job.job_type}</div>
-                  </div>
-                  <div className="mt-6 flex gap-3">
-                    <button className="flex-1 bg-indigo-600 text-white py-2 rounded-lg font-bold hover:bg-indigo-700 transition-all">Apply Now</button>
-                    <button className="px-3 py-2 border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-all"><Clock className="w-5 h-5 text-zinc-400" /></button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="space-y-6">
-          <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-16 h-16 bg-zinc-100 rounded-full flex items-center justify-center">
-                <User className="w-8 h-8 text-zinc-400" />
-              </div>
-              <div>
-                <h3 className="font-bold text-zinc-900">{user.name}</h3>
-                <p className="text-xs text-zinc-500">Profile Strength: 45%</p>
-              </div>
-            </div>
-            <div className="w-full bg-zinc-100 h-2 rounded-full mb-6">
-              <div className="bg-indigo-600 h-2 rounded-full w-[45%]" />
-            </div>
-            <button className="w-full border border-indigo-600 text-indigo-600 py-2 rounded-lg font-bold hover:bg-indigo-50 transition-all">
-              Complete Profile
-            </button>
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm">
-            <h3 className="font-bold text-zinc-900 mb-4">Your Activity</h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-zinc-500">Applications Sent</span>
-                <span className="font-bold text-zinc-900">0</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-zinc-500">Profile Views</span>
-                <span className="font-bold text-zinc-900">12</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-zinc-500">Shortlisted</span>
-                <span className="font-bold text-zinc-900">0</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const PricingPage = ({ user, onUpdateUser }: { user: UserData | null, onUpdateUser: (user: UserData) => void }) => {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'annually'>('monthly');
@@ -2579,9 +2327,16 @@ export default function App() {
             <Route path="/register" element={user ? <Navigate to="/" /> : <RegisterPage onLogin={handleLogin} />} />
             
             {/* Protected Routes */}
-            <Route path="/dashboard" element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} />
-            <Route path="/employer" element={user?.role === 'EMPLOYER' ? <EmployerDashboard user={user} /> : <Navigate to="/login" />} />
-            <Route path="/va" element={user?.role === 'JOB_SEEKER' ? <VADashboard user={user} /> : <Navigate to="/login" />} />
+            <Route path="/dashboard" element={user ? <Navigate to={getDashboardRoute(user.role)} /> : <Navigate to="/login" />} />
+            <Route path="/dashboard/worker" element={user?.role === 'JOB_SEEKER' ? <WorkerDashboard user={user} /> : <Navigate to="/login" />} />
+            <Route path="/dashboard/worker/profile" element={user?.role === 'JOB_SEEKER' ? <WorkerProfile user={user} /> : <Navigate to="/login" />} />
+            <Route path="/dashboard/employer" element={user?.role === 'EMPLOYER' ? <EmployerDashboard user={user} /> : <Navigate to="/login" />} />
+            <Route path="/dashboard/employer/profile" element={user?.role === 'EMPLOYER' ? <EmployerProfile user={user} /> : <Navigate to="/login" />} />
+            <Route path="/dashboard/admin" element={user?.role === 'ADMIN' ? <AdminDashboard user={user} /> : <Navigate to="/login" />} />
+            
+            {/* Legacy Routes - Redirect to new dashboards */}
+            <Route path="/employer" element={<Navigate to="/dashboard/employer" />} />
+            <Route path="/va" element={<Navigate to="/dashboard/worker" />} />
             
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" />} />
